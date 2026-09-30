@@ -10,6 +10,7 @@ requirements = python3,flask,numpy,pandas,requests,websocket-client
 orientation = portrait
 fullscreen = 0
 p4a.bootstrap = webview
+p4a.branch = v2026.05.09
 p4a.port = 8080
 android.api = 35
 android.minapi = 24
