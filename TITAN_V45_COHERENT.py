@@ -53,11 +53,15 @@ def _select_app_home() -> Path:
     On non-Android hosts (desktop/CI), TITAN_HOME or ./AI_TAITAN_AI is used so the
     engine can start without crashing, while never silently writing into /tmp.
     """
-    if Path("/storage/emulated/0").exists():
-        return TITAN_ANDROID_HOME
-    env_home = (os.environ.get("TITAN_HOME") or "").strip()
+    # Android must use the app-private writable directory first. On Android 13+
+    # shared external storage is not a safe startup dependency without runtime
+    # permissions/MediaStore handling, and a failure here can terminate the
+    # Python process before the WebView appears.
+    env_home = (os.environ.get("TITAN_HOME") or os.environ.get("ANDROID_PRIVATE") or "").strip()
     if env_home:
-        return Path(env_home).expanduser().resolve()
+        return Path(env_home).expanduser().resolve() / "titan"
+    if Path("/storage/emulated/0").exists() and os.environ.get("TITAN_SHARED_STORAGE") == "1":
+        return TITAN_ANDROID_HOME
     lab = Path(__file__).resolve().parent / "AI_TAITAN_AI"
     return lab
 
