@@ -1,136 +1,91 @@
-"""TITAN Android entry point — storage-permission aware, fail-open startup."""
+"""TITAN Android entry point — start WebView immediately, then unlock storage and engine."""
 from __future__ import annotations
-import os
-import time
-import traceback
+import os, time, threading, traceback
 
-__version__ = "60.0.3"
+__version__ = "60.0.5"
 PORT = int(os.environ.get("TITAN_PORT", "8080") or "8080")
 ROOT = "/storage/emulated/0/TAITAN"
 LOG = ROOT + "/data/titan_startup.log"
-
 
 def log_error(exc):
     try:
         os.makedirs(os.path.dirname(LOG), exist_ok=True)
         with open(LOG, "a", encoding="utf-8") as f:
-            traceback.print_exc(file=f)
-            f.write("\n" + repr(exc) + "\n")
-    except Exception:
-        pass
+            traceback.print_exc(file=f); f.write("\n"+repr(exc)+"\n")
+    except Exception: pass
 
-
-def _android_storage_ready():
+def storage_ready():
     try:
         from jnius import autoclass
-        Environment = autoclass("android.os.Environment")
-        if hasattr(Environment, "isExternalStorageManager"):
-            return bool(Environment.isExternalStorageManager())
-    except Exception:
-        pass
+        E=autoclass("android.os.Environment")
+        if hasattr(E,"isExternalStorageManager") and not E.isExternalStorageManager():
+            return False
+    except Exception: pass
     try:
-        os.makedirs(ROOT, exist_ok=True)
-        for name in ("data", "cache", "memory", "secrets"):
-            os.makedirs(os.path.join(ROOT, name), exist_ok=True)
-        p = os.path.join(ROOT, "data", ".titan_probe")
-        with open(p, "w", encoding="utf-8") as f:
-            f.write("ok")
-        os.remove(p)
-        return True
-    except Exception:
-        return False
+        os.makedirs(ROOT,exist_ok=True)
+        for n in ("data","cache","memory","secrets"): os.makedirs(os.path.join(ROOT,n),exist_ok=True)
+        p=os.path.join(ROOT,"data",".titan_probe")
+        with open(p,"w",encoding="utf-8") as f: f.write("ok")
+        os.remove(p); return True
+    except Exception: return False
 
-
-def _open_storage_settings():
+def open_storage_settings():
     try:
         from jnius import autoclass
-        PythonActivity = autoclass("org.kivy.android.PythonActivity")
-        Intent = autoclass("android.content.Intent")
-        Settings = autoclass("android.provider.Settings")
-        Uri = autoclass("android.net.Uri")
-        activity = PythonActivity.mActivity
-        package_name = activity.getPackageName()
-        intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-        intent.setData(Uri.parse("package:" + package_name))
-        activity.startActivity(intent)
-        return True
-    except Exception as e:
-        log_error(e)
-        return False
+        A=autoclass("org.kivy.android.PythonActivity").mActivity
+        I=autoclass("android.content.Intent")
+        S=autoclass("android.provider.Settings")
+        U=autoclass("android.net.Uri")
+        i=I(S.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+        i.setData(U.parse("package:"+A.getPackageName())); A.startActivity(i); return True
+    except Exception as e: log_error(e); return False
 
-
-def _prepare_storage():
-    if _android_storage_ready():
-        return True
-    _open_storage_settings()
-    deadline = time.time() + 180
-    while time.time() < deadline:
-        if _android_storage_ready():
-            try:
-                for name in ("data", "cache", "memory", "secrets"):
-                    os.makedirs(os.path.join(ROOT, name), exist_ok=True)
-            except Exception as e:
-                log_error(e)
-                return False
-            return True
-        time.sleep(1.5)
-    return False
-
-
-def _fallback_server(message):
+STATE={"ready":False,"message":"در حال آماده‌سازی TITAN…","app":None}
+def startup():
+    global STATE
+    if not storage_ready(): open_storage_settings()
+    for _ in range(300):
+        if storage_ready(): break
+        STATE["message"]="مجوز «مدیریت همه فایل‌ها» را برای TITAN فعال کنید؛ سپس به برنامه برگردید."
+        time.sleep(1)
+    else:
+        STATE["message"]="مجوز حافظه داده نشد. از تنظیمات Android دسترسی TITAN را فعال کنید."
+        return
     try:
-        from flask import Flask
-        app = Flask("titan_startup_error")
-
-        @app.get("/")
-        def error_page():
-            return f"""<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8">
-<title>TITAN startup</title>
-<body style="background:#050812;color:#eef2ff;font-family:Tahoma;padding:28px">
-<h2 style="color:#38bdf8">⚡ TITAN AI</h2>
-<p>{message}</p>
-<p>پوشه موردنیاز: <b>/storage/emulated/0/TAITAN</b></p>
-<p>مجوز «مدیریت همه فایل‌ها» برای TITAN را فعال کنید و به برنامه برگردید.</p>
-<p style="opacity:.75">گزارش: /storage/emulated/0/TAITAN/data/titan_startup.log</p>
-</body></html>"""
-        app.run(host="127.0.0.1", port=PORT, threaded=True, debug=False, use_reloader=False)
+        import TITAN_V45_COHERENT as titan
+        titan.run_titan(open_browser=False, serve=False)
+        STATE["app"]=titan.app; STATE["ready"]=True
+        STATE["message"]="TITAN آماده است."
     except Exception as e:
-        log_error(e)
-        while True:
-            time.sleep(5)
+        log_error(e); STATE["message"]="خطای راه‌اندازی TITAN؛ گزارش در TAITAN/data/titan_startup.log"
 
+def make_startup_app():
+    from flask import Flask, jsonify
+    app=Flask("titan_boot")
+    @app.get("/startup-status")
+    def status(): return jsonify({"ready":STATE["ready"],"message":STATE["message"]})
+    @app.get("/")
+    def index():
+        return """<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TITAN AI</title><style>body{margin:0;background:#050812;color:#eef2ff;font-family:Tahoma,Arial;padding:28px;text-align:center}h2{color:#38bdf8} .box{margin:12vh auto;max-width:520px;padding:28px;border:1px solid #23304d;border-radius:20px;background:#0b1222} </style>
+<div class="box"><h2>⚡ TITAN AI V60</h2><p id="m">در حال راه‌اندازی موتور…</p><p style="opacity:.7">/storage/emulated/0/TAITAN</p></div>
+<script>
+async function p(){try{let r=await fetch('/startup-status');let j=await r.json();document.getElementById('m').textContent=j.message;if(j.ready) location.reload()}catch(e){}setTimeout(p,1200)}p()
+</script></body></html>"""
+    @app.route("/",defaults={"path":""},methods=["GET","POST","PUT","DELETE","PATCH","OPTIONS"])
+    def root2(path): return index()
+    return app
 
-def _load_engine():
-    global titan
-    try:
-        import TITAN_V45_COHERENT as titan_module
-        titan = titan_module
-        return True
-    except Exception as e:
-        titan = None
-        log_error(e)
-        return False
-
-
-titan = None
-
-
-def _engine():
-    try:
-        titan.run_titan(open_browser=False)
-    except Exception as e:
-        log_error(e)
-
+def dispatch_titan(boot_app):
+    from werkzeug.wrappers import Response
+    def wsgi(environ,start_response):
+        target=STATE.get("app") or boot_app
+        return target(environ,start_response)
+    return wsgi
 
 def main():
-    if not _prepare_storage():
-        _fallback_server("برای ذخیره‌سازی مستقیم در پوشه TAITAN، مجوز حافظه لازم است.")
-        return
-    if not _load_engine():
-        _fallback_server("موتور TITAN در شروع برنامه متوقف شد. گزارش خطا در پوشه TAITAN ذخیره شده است.")
-        return
-    _engine()
-
-
-if __name__ == "__main__":
-    main()
+    boot=make_startup_app()
+    threading.Thread(target=startup,name="titan-bootstrap",daemon=True).start()
+    from werkzeug.serving import run_simple
+    run_simple("127.0.0.1",PORT,dispatch_titan(boot),threaded=True,use_reloader=False)
+if __name__=="__main__": main()
