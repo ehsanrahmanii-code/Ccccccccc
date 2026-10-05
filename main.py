@@ -22,9 +22,6 @@ def log_error(exc):
 
 # Import errors must not kill the Android activity silently.
 try:
-    private = (os.environ.get("ANDROID_PRIVATE") or "").strip()
-    if private:
-        os.environ.setdefault("TITAN_HOME", os.path.join(private, "titan"))
     import TITAN_V45_COHERENT as titan
 except Exception as e:
     log_error(e)
