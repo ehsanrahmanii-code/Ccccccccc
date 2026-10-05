@@ -19658,66 +19658,51 @@ def _titan_self_test() -> int:
 
 
 def run_titan(open_browser: bool = False) -> None:
-    """Start the TITAN desktop runtime in a caller-owned thread/process."""
-    try:
-        _safe_startup_check()
-        load_settings()
-        reload_keys()
-    except Exception as exc:
-        LOGGER.exception("Desktop startup preparation failed: %s", exc)
-    try:
-        start_live_engine()
-    except Exception as exc:
-        LOGGER.warning("Live engine startup deferred: %s", exc)
-    # V29: continuous scan + learning loop is independent of browser refreshes.
-    try:
-        threading.Thread(target=_v29_auto_loop, name="titan-v29-autonomous", daemon=True).start()
-    except Exception as exc:
-        LOGGER.warning("Autonomous loop startup failed: %s", exc)
-    # Warm disk/memory cache in background so the first browser hit is instant.
-    try:
-        threading.Thread(target=lambda: _background_market_refresh(False), name="titan-warmup", daemon=True).start()
-    except Exception as exc:
-        LOGGER.debug("warmup failed: %s", exc)
-    try:
-        _ensure_central_learner()
-    except Exception:
-        pass
-    try:
-        threading.Thread(target=_v40_maintenance_loop, name="titan-v40-heal", daemon=True).start()
-        LOGGER.info("V40 self-healing maintenance loop started")
-    except Exception as _v40e:
-        LOGGER.warning("V40 maintenance start failed: %s", _v40e)
-    if open_browser:
+    """Start TITAN with the HTTP server available immediately on Android.
+
+    Heavy initialization is deliberately moved off the WebView request path.
+    The native webview bootstrap must be able to connect to 127.0.0.1:8080
+    even when storage/database/network/AI startup is slow or partially failing.
+    """
+    def _background_init():
         try:
-            threading.Thread(target=_open_dashboard_browser, name="titan-browser", daemon=True).start()
+            _safe_startup_check()
+            load_settings()
+            reload_keys()
+        except Exception as exc:
+            LOGGER.exception("Startup preparation failed: %s", exc)
+        try:
+            start_live_engine()
+        except Exception as exc:
+            LOGGER.warning("Live engine startup deferred: %s", exc)
+        try:
+            threading.Thread(target=_v29_auto_loop, name="titan-v29-autonomous", daemon=True).start()
+        except Exception as exc:
+            LOGGER.warning("Autonomous loop startup failed: %s", exc)
+        try:
+            threading.Thread(target=lambda: _background_market_refresh(False),
+                             name="titan-warmup", daemon=True).start()
+        except Exception as exc:
+            LOGGER.debug("warmup failed: %s", exc)
+        try:
+            _ensure_central_learner()
         except Exception:
             pass
+        try:
+            threading.Thread(target=_v40_maintenance_loop, name="titan-v40-heal", daemon=True).start()
+        except Exception as exc:
+            LOGGER.warning("V40 maintenance start failed: %s", exc)
+
+    threading.Thread(target=_background_init, name="titan-android-init", daemon=True).start()
+
     print("=" * 78)
-    print("⚡ TITAN V41 BALANCED OPPORTUNITY — real signals without missing edges")
+    print("⚡ TITAN V60.0.2 — Android fail-open WebView startup")
     print(f"📁 Storage: {APP_HOME}")
-    print(f"🧠 Authority: {TITAN_CENTRAL_VERSION} + {V40_VERSION}")
-    print(f"🧠 Param: {TITAN_PARAM_VERSION}")
-    print("📱 Android mode: local-only dashboard | storage HARD-LOCKED to AI TAITAN AI")
-    print("🛡️ Storage audit: PASS | writable: YES | persistent paths: LOCKED")
-    print(f"🔑 Gemini Key: {'FOUND' if GEMINI_API_KEY else 'NOT FOUND'}")
-    print(f"🔑 CoinGlass Key: {'FOUND' if COINGLASS_API_KEY else 'NOT FOUND (Binance fallback)'}")
-    print(f"🌐 Dashboard: http://127.0.0.1:{PORT}  |  LAN: http://<PHONE-IP>:{PORT}")
-    print("📊 Mode: Analysis only — signals are probabilistic, not guarantees")
-    print("🩺 V41: balanced gates · soft horizon/BTC · RR≥1.10 · self-heal · no opportunity waste")
-    print("🔄 Auto-scan / central judge / REAL EDGE / reward-penalty / EDGE LAB: ACTIVE")
-    print(f"🛡️ Integrity seal: {V42_VERSION} | fail-closed risk/price/level/probability contract: ACTIVE")
-    print(f"🧠 Unified governor: {V43_VERSION} | all available evidence modules participate: ACTIVE")
-    print(f"🧠 Adaptive opportunity + continuous learning: {V44_VERSION} | bounded self-improvement: ACTIVE")
-    print(f"⚖️ Balanced opportunity + honest outcome evaluation: {V44_VERSION} | /api/decision-quality")
-    print(f"🧪 V45: candidate-side levels · cost-aware EV gate · shadow learning · honest backtest | {V45_VERSION} | /api/v45/status")
-    print("🧠 Opportunity policy: EARLY/READY/STRONG — WAIT only on insufficient edge or hard data risk")
-    print("📱 Android tuning: soft central governor, watchdog, workers capped, adaptive polling, SQLite temp_store=MEMORY")
-    print("🧹 Favicon 500 fix: ACTIVE | browser persistent storage: DISABLED")
+    print(f"🌐 Dashboard: http://127.0.0.1:{PORT}")
+    print("📱 WebView server starts immediately; engine initializes in background")
     print("=" * 78)
+
+    # IMPORTANT: keep the Flask server in the caller thread so the WebView
+    # bootstrap can connect without waiting for market scans or database work.
     app.run(host=HOST, port=PORT, threaded=True, debug=False, use_reloader=False)
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] in {"--self-test", "--test", "self-test"}:
-        raise SystemExit(_titan_self_test() or _v45_self_test())
-    run_titan(open_browser=True)
