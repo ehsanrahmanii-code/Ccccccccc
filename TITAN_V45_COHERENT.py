@@ -19704,5 +19704,6 @@ def run_titan(open_browser: bool = False, serve: bool = True) -> None:
 
     # IMPORTANT: keep the Flask server in the caller thread so the WebView
     # bootstrap can connect without waiting for market scans or database work.
-    if serve:\n        app.run(host=HOST, port=PORT, threaded=True, debug=False, use_reloader=False)
+    if serve:
+        app.run(host=HOST, port=PORT, threaded=True, debug=False, use_reloader=False)
 
