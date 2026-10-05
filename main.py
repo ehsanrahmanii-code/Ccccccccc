@@ -1,18 +1,18 @@
-"""TITAN Android entry point with safe startup."""
+"""TITAN Android entry point — fail-open WebView startup."""
 from __future__ import annotations
 import os
 import threading
 import time
 import traceback
 
-__version__ = "45.0.4"
-os.environ.setdefault("TITAN_PORT", "8080")
-
-LOG = os.path.join(os.environ.get("ANDROID_PRIVATE", "/tmp"), "titan_startup.log")
+__version__ = "60.0.2"
+PORT = int(os.environ.get("TITAN_PORT", "8080") or "8080")
+LOG = "/storage/emulated/0/TAITAN/data/titan_startup.log"
 
 
 def log_error(exc):
     try:
+        os.makedirs(os.path.dirname(LOG), exist_ok=True)
         with open(LOG, "a", encoding="utf-8") as f:
             traceback.print_exc(file=f)
             f.write("\n" + repr(exc) + "\n")
@@ -20,15 +20,14 @@ def log_error(exc):
         pass
 
 
-# Import errors must not kill the Android activity silently.
 try:
     import TITAN_V45_COHERENT as titan
 except Exception as e:
-    log_error(e)
     titan = None
+    log_error(e)
 
 
-def _run():
+def _engine():
     if titan is None:
         return
     try:
@@ -37,12 +36,36 @@ def _run():
         log_error(e)
 
 
+def _fallback_server():
+    """Never leave the Android WebView on an endless native Loading screen."""
+    try:
+        from flask import Flask
+        app = Flask("titan_startup_error")
+
+        @app.get("/")
+        def error_page():
+            return """<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8">
+<title>TITAN startup</title>
+<body style="background:#050812;color:#eef2ff;font-family:Tahoma;padding:28px">
+<h2 style="color:#38bdf8">⚡ TITAN AI</h2>
+<p>موتور TITAN در شروع برنامه متوقف شد.</p>
+<p>فایل خطا:</p><code>/storage/emulated/0/TAITAN/data/titan_startup.log</code>
+<p style="opacity:.75">برنامه دیگر روی Loading بی‌نهایت قفل نمی‌شود.</p>
+</body></html>"""
+        app.run(host="127.0.0.1", port=PORT, threaded=True, debug=False, use_reloader=False)
+    except Exception as e:
+        log_error(e)
+        while True:
+            time.sleep(5)
+
+
 def main():
-    # Start engine after launcher has a chance to stay alive.
-    worker = threading.Thread(target=_run, name="titan-engine", daemon=True)
-    worker.start()
-    while True:
-        time.sleep(5)
+    if titan is None:
+        _fallback_server()
+        return
+    # run_titan now opens Flask immediately and performs heavy engine startup
+    # in the background, so python-for-android WebView can connect at once.
+    _engine()
 
 
 if __name__ == "__main__":
