@@ -14299,15 +14299,12 @@ def index():
         market_data, gemini_summary, macro = _fast_market_snapshot()
         with CACHE_LOCK:
             cache_age = time.time() - float(CACHE.get("timestamp") or 0) if CACHE.get("timestamp") else 1e9
-        # Never block the first paint on a full multi-coin analyze when any snapshot exists.
-        # Cold start without disk cache: kick background refresh and render lightweight empty shell.
+        # NEVER block the HTTP/WebView first paint on a cold market scan.
+        # The old Android path called update_cache(False) synchronously here.
+        # A full multi-coin scan can take many seconds, leaving the native WebView
+        # on its Loading screen. Render immediately and refresh CACHE in background.
         if not market_data:
-            # One fast blocking scan (LLM skipped via DASHBOARD_FAST_SCAN) so first paint has coins.
-            try:
-                market_data, gemini_summary, macro = update_cache(False)
-            except Exception as _uc_exc:
-                LOGGER.warning("cold update_cache: %s", _uc_exc)
-                _background_market_refresh(False)
+            _background_market_refresh(False)
         elif cache_age >= MARKET_CACHE_TTL:
             _background_market_refresh(False)
         if RENDER_PERF_LOG:
