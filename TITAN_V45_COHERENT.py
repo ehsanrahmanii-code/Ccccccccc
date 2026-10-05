@@ -44,26 +44,19 @@ except Exception:
 # fallback: if shared storage is unavailable, TITAN stops instead of silently
 # writing into the script directory, /tmp, the current working directory, or
 # another application cache.
-TITAN_ANDROID_HOME = Path("/storage/emulated/0/AI TAITAN AI")
+TITAN_ANDROID_HOME = Path("/storage/emulated/0/TAITAN")
 
 def _select_app_home() -> Path:
-    """Prefer Android shared storage; optional TITAN_HOME; safe desktop fallback for lab use.
+    """Return the single user-visible Android storage root: /storage/emulated/0/TAITAN.
 
-    Production Android still hard-locks under /storage/emulated/0/AI TAITAN AI.
-    On non-Android hosts (desktop/CI), TITAN_HOME or ./AI_TAITAN_AI is used so the
-    engine can start without crashing, while never silently writing into /tmp.
+    On Android, TITAN never falls back to app-private storage or another folder.
+    On CI/desktop, a local TAITAN folder is used only because shared Android
+    storage does not exist there.
     """
-    # Android must use the app-private writable directory first. On Android 13+
-    # shared external storage is not a safe startup dependency without runtime
-    # permissions/MediaStore handling, and a failure here can terminate the
-    # Python process before the WebView appears.
-    env_home = (os.environ.get("TITAN_HOME") or os.environ.get("ANDROID_PRIVATE") or "").strip()
-    if env_home:
-        return Path(env_home).expanduser().resolve() / "titan"
-    if Path("/storage/emulated/0").exists() and os.environ.get("TITAN_SHARED_STORAGE") == "1":
-        return TITAN_ANDROID_HOME
-    lab = Path(__file__).resolve().parent / "AI_TAITAN_AI"
-    return lab
+    shared = Path("/storage/emulated/0")
+    if shared.exists() and shared.is_dir():
+        return shared / "TAITAN"
+    return Path(__file__).resolve().parent / "TAITAN"
 
 APP_HOME = _select_app_home()
 DATA_DIR = APP_HOME / "data"
