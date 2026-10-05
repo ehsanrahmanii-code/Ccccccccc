@@ -19657,7 +19657,7 @@ def _titan_self_test() -> int:
 
 
 
-def run_titan(open_browser: bool = False) -> None:
+def run_titan(open_browser: bool = False, serve: bool = True) -> None:
     """Start TITAN with the HTTP server available immediately on Android.
 
     Heavy initialization is deliberately moved off the WebView request path.
@@ -19704,5 +19704,5 @@ def run_titan(open_browser: bool = False) -> None:
 
     # IMPORTANT: keep the Flask server in the caller thread so the WebView
     # bootstrap can connect without waiting for market scans or database work.
-    app.run(host=HOST, port=PORT, threaded=True, debug=False, use_reloader=False)
+    if serve:\n        app.run(host=HOST, port=PORT, threaded=True, debug=False, use_reloader=False)
 
