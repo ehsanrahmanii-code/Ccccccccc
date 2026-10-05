@@ -1,11 +1,11 @@
 [app]
-title = TITAN AI V45
+title = TITAN AI V60
 package.name = titanai
 package.domain = ai.titan
 source.dir = .
 source.include_exts = py,json,txt,html,css,js,png,jpg,jpeg,ico,db
 source.exclude_dirs = .git,.github,.buildozer,bin,__pycache__
-version = 45.0.3
+version = 60.0.1
 requirements = python3,flask,numpy,pandas,requests,websocket-client
 orientation = portrait
 fullscreen = 0
@@ -17,7 +17,7 @@ android.minapi = 24
 android.ndk = 25b
 android.ndk_api = 24
 android.archs = arm64-v8a
-android.permissions = INTERNET
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE
 android.debug_artifact = apk
 android.release_artifact = apk
 android.accept_sdk_license = True
