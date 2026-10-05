@@ -19,3 +19,6 @@ Do not commit API keys. The TITAN engine reads keys from its `secrets/` director
 The launcher uses `ANDROID_PRIVATE`/`TITAN_HOME` so SQLite, cache, logs and memory stay in an app-private writable directory.
 
 The supplied engine is analysis-only; this packaging does not add order execution.
+
+
+<!-- Android build trigger: 2026-10-05 -->
