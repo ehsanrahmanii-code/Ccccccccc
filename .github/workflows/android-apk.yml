@@ -40,11 +40,11 @@ jobs:
         run: |
           ls -lah bin/
           test -n "$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          python -m py_compile main.py TITAN_V45_COHERENT.py
+          python -m py_compile main.py TITAN_PRO_V60_LOADING_FIXED.py
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: TITAN-AI-V60-TAITAN-APK
+          name: TITAN-AI-V60-FINAL-APK
           path: bin/*.apk
           if-no-files-found: error
           retention-days: 14
