@@ -52,7 +52,7 @@ def startup():
         STATE["message"]="مجوز حافظه داده نشد. از تنظیمات Android دسترسی TITAN را فعال کنید."
         return
     try:
-        import TITAN_V45_COHERENT as titan
+        import TITAN_PRO_V60_LOADING_FIXED as titan
         titan.run_titan(open_browser=False, serve=False)
         STATE["app"]=titan.app; STATE["ready"]=True
         STATE["message"]="TITAN آماده است."
