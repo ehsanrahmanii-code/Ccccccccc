@@ -1,11 +1,11 @@
 [app]
-title = TITAN AI V60
+title = TITAN AI V60 FINAL
 package.name = titanai
 package.domain = ai.titan
 source.dir = .
 source.include_exts = py,json,txt,html,css,js,png,jpg,jpeg,ico,db
 source.exclude_dirs = .git,.github,.buildozer,bin,__pycache__
-version = 60.0.1
+version = 60.1.0
 requirements = python3,flask,numpy,pandas,requests,websocket-client
 orientation = portrait
 fullscreen = 0
