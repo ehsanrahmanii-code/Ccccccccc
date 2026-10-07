@@ -35,7 +35,7 @@ except Exception:
 # Technical layers: Fibonacci / Support-Resistance / Multi TF scoring integrated ENTERPRISE V32
 # Analysis only. No order execution.
 # V60: ALL files, data, cache, logs, temp, bytecode, Flask instance, SQLite
-# journals, history and secrets are HARD-LOCKED to Internal Storage/KKK.
+# journals, history and secrets are HARD-LOCKED to Internal Storage/TAITAN.
 # Nothing is written anywhere else on the phone.
 # ============================================================
 
@@ -43,7 +43,7 @@ except Exception:
 # internal storage. Nothing is written outside this root by TITAN.
 #
 # Required layout (all contained inside one folder):
-#   /storage/emulated/0/KKK/
+#   /storage/emulated/0/TAITAN/
 #       data/              -> database, settings, logs, replay, flask instance
 #       cache/             -> market + AI caches, history, tmp, pycache
 #       memory/            -> learning/adaptive memory
@@ -51,15 +51,15 @@ except Exception:
 #
 # There is intentionally NO fallback to the script directory, current working
 # directory, /tmp, /data/data, Android app cache, a desktop profile,
-# TITAN_HOME, SD card, or any other path. Only KKK.
-TITAN_FOLDER_NAME = "KKK"
+# TITAN_HOME, SD card, or any other path. Only TAITAN.
+TITAN_FOLDER_NAME = "TAITAN"
 TITAN_SHARED_STORAGE = Path("/storage/emulated/0")
 TITAN_ANDROID_HOME = TITAN_SHARED_STORAGE / TITAN_FOLDER_NAME
 
 def _select_app_home() -> Path:
-    """Return the only allowed TITAN persistent root: Internal Storage/KKK.
+    """Return the only allowed TITAN persistent root: Internal Storage/TAITAN.
 
-    Hard-locked to folder KKK on shared internal storage. Android 15 may expose
+    Hard-locked to folder TAITAN on shared internal storage. Android 15 may expose
     the same volume as /storage/emulated/0, /sdcard, or /storage/self/primary.
     Never writes to app cache, /tmp, script dir, or SD card roots.
     """
@@ -72,7 +72,7 @@ def _select_app_home() -> Path:
     for cand in candidates:
         try:
             if cand.exists() and cand.is_dir():
-                # FIX: probe inside KKK itself so nothing is ever written outside the KKK folder.
+                # FIX: probe inside TAITAN itself so nothing is ever written outside the TAITAN folder.
                 kroot = cand / TITAN_FOLDER_NAME
                 probe = kroot / ".titan_kkk_probe"
                 try:
@@ -87,9 +87,9 @@ def _select_app_home() -> Path:
             continue
     if root is None:
         raise RuntimeError(
-            "TITAN requires writable Internal Storage (KKK). "
-            "Grant All-files / storage permission, create folder KKK, then run again. "
-            "Nothing is stored outside Internal Storage/KKK."
+            "TITAN requires writable Internal Storage (TAITAN). "
+            "Grant All-files / storage permission, create folder TAITAN, then run again. "
+            "Nothing is stored outside Internal Storage/TAITAN."
         )
     return root / TITAN_FOLDER_NAME
 
@@ -111,7 +111,7 @@ for directory in (
 ):
     directory.mkdir(parents=True, exist_ok=True)
 
-# Force every OS / Python / SQLite / XDG temp+cache write into KKK.
+# Force every OS / Python / SQLite / XDG temp+cache write into TAITAN.
 # This covers tempfile, sqlite spill, bytecode, requests/certifi caches, etc.
 os.environ["TMPDIR"] = str(TMP_DIR)
 os.environ["TEMP"] = str(TMP_DIR)
@@ -140,7 +140,7 @@ AI_SYMBOL_CACHE_PATH = CACHE_DIR / "ai_symbol_responses.json"
 
 
 def _startup_storage_audit() -> dict[str, Any]:
-    """Verify that every persistent TITAN root is physically inside KKK."""
+    """Verify that every persistent TITAN root is physically inside TAITAN."""
     root = APP_HOME.resolve()
     if root.name != TITAN_FOLDER_NAME:
         raise RuntimeError(f"TITAN storage root must be folder {TITAN_FOLDER_NAME}, got {root}")
@@ -174,7 +174,7 @@ def _startup_storage_audit() -> dict[str, Any]:
         try:
             path.resolve().relative_to(root)
         except ValueError:
-            raise RuntimeError(f"Persistent path escaped KKK root: {path}")
+            raise RuntimeError(f"Persistent path escaped TAITAN root: {path}")
     return {
         "root": str(root),
         "writable": True,
@@ -219,8 +219,8 @@ TOTAL_ENTRY_BUFFER = FEE_RATE + SPREAD_RATE + SLIPPAGE_RATE
 # --- V8 Professional confidence gates ---
 # V28.5: deep audit — residual WAIT kills softened, hero board fixed,
 # refine_bias balanced, neural demotion only on real conflict.
-TITAN_PARAM_VERSION = "V60.0-ANDROID-KKK-EDGE-ROUTER"
-TITAN_BUILD_ID = "V60.0-PRO-2026-10-ANDROID-KKK-EDGE-ROUTER"
+TITAN_PARAM_VERSION = "V60.0-ANDROID-TAITAN-EDGE-ROUTER"
+TITAN_BUILD_ID = "V60.0-PRO-2026-10-ANDROID-TAITAN-EDGE-ROUTER"
 TITAN_ENGINE_MODE = "V60_EDGE_ROUTER_CENTRAL_GOVERNOR_ANDROID"
 TITAN_ACTIVE_DECISION_PATH = "DATA -> TF-PROFILE -> V49-54 -> V60_EDGE_ROUTER -> V51_FINAL -> V55_DESK -> V56_JOURNAL -> LEDGER"
 TITAN_V51_AUTHORITATIVE = True
@@ -406,7 +406,7 @@ def _safe_app_path(path: Path) -> Path:
     try:
         candidate.relative_to(root)
     except ValueError:
-        raise RuntimeError(f"TITAN path escaped KKK root: {candidate}")
+        raise RuntimeError(f"TITAN path escaped TAITAN root: {candidate}")
     return candidate
 
 
